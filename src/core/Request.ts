@@ -30,7 +30,8 @@ export class RequestClient {
     timeout: number
   ) {
     return await Promise.race([
-      fetch(url, options),
+      // TODO: Apply adapter pattern here to support other request libraries
+      fetch(url, options), // for now it is set to fetch call
       new Promise((_resolve, reject) =>
         setTimeout(() => reject(new Error("Request Timeout")), timeout)
       ) as Promise<Response>,
@@ -170,10 +171,10 @@ export class RequestClient {
   }
 }
 
-// usage
-const api = new RequestClient("https://api.example.com", {
-  Authorization: "Bearer token123",
-});
+// // usage
+// const api = new RequestClient("https://api.example.com", {
+//   Authorization: "Bearer token123",
+// });
 
-api.get("/users");
-api.post("/login", { email: "a@b.com", pass: "123" });
+// api.get("/users");
+// api.post("/login", { email: "a@b.com", pass: "123" });
