@@ -1,5 +1,4 @@
-import { fetchAdapter } from '../adapters/FetchAdapter';
-import { defaultRequestRetry, defaultRequestTimeout } from "../constants";
+import { defaultRequestRetry, defaultRequestTimeout, getAdapter } from "../constants";
 import { STATUS_CODES } from '../constants/status';
 import { AdapterConfig, AdapterResponse, RequestOptions } from "../types";
 import { safeMerge } from "../utils/ObjectMerger";
@@ -65,7 +64,8 @@ export class RequestClient {
     };
 
     const exec = async () => {
-      const response: AdapterResponse<TResponse> = await fetchAdapter<TResponse>(adapterConfig);
+      const adapter = getAdapter()
+      const response: AdapterResponse<TResponse> = await adapter<TResponse>(adapterConfig);
 
       if (response.status === STATUS_CODES.TIMEOUT && response.headers["x-timeout"] === "true") {
         throw new Error(`Timeout: ${timeout}ms`);
