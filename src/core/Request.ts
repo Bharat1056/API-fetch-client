@@ -1,5 +1,7 @@
+import { fetchAdapter } from '../adapters/FetchAdapter';
 import { defaultRequestRetry, defaultRequestTimeout } from "../constants";
-import { RequestOptions } from "../types";
+import { STATUS_CODES } from '../constants/status';
+import { AdapterConfig, AdapterResponse, RequestOptions } from "../types";
 import { safeMerge } from "../utils/ObjectMerger";
 
 export class RequestClient {
@@ -22,20 +24,6 @@ export class RequestClient {
 
   removeHeader(key: string): void {
     delete this.defaultHeaders[key];
-  }
-
-  private async fetchWithTimeout(
-    url: string,
-    options: RequestInit,
-    timeout: number
-  ) {
-    return await Promise.race([
-      // TODO: Apply adapter pattern here to support other request libraries
-      fetch(url, options), // for now it is set to fetch call
-      new Promise((_resolve, reject) =>
-        setTimeout(() => reject(new Error("Request Timeout")), timeout)
-      ) as Promise<Response>,
-    ]);
   }
 
   private async runWithRetry<T>(
@@ -67,23 +55,23 @@ export class RequestClient {
 
     const finalHeaders = safeMerge(this.defaultHeaders, headers);
 
-    const fetchOptions: RequestInit = {
+    const adapterConfig: AdapterConfig = {
+      url: this.baseURL + endpoint,
       method,
       headers: finalHeaders,
+      timeout,
+      data: body,
+      responseType: "json",
     };
 
-    if (body) {
-      fetchOptions.body = JSON.stringify(body);
-      finalHeaders["Content-Type"] = "application/json";
-    }
-
     const exec = async () => {
-      const res = await this.fetchWithTimeout(
-        this.baseURL + endpoint,
-        fetchOptions,
-        timeout
-      );
-      return res.json() as Promise<TResponse>;
+      const response: AdapterResponse<TResponse> = await fetchAdapter<TResponse>(adapterConfig);
+
+      if (response.status === STATUS_CODES.TIMEOUT && response.headers["x-timeout"] === "true") {
+        throw new Error(`Timeout: ${timeout}ms`);
+      }
+
+      return response.data;
     };
 
     return this.runWithRetry(exec, retry);
